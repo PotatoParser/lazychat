@@ -1,4 +1,5 @@
 import random
+import time
 
 # Use AsyncJsonWebsocketConsumer instead of AsyncWebsocketConsumer for json encoding
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -23,7 +24,8 @@ class WebSocket(AsyncJsonWebsocketConsumer):
 		# Send the generated username
 		await self.send_json({
 			'type': 'username',
-			'username': self.scope['username']
+			'username': self.scope['username'],
+			'time': int(round(time.time() * 1000))
 		})
 
 	async def receive_json(self, content):
@@ -38,6 +40,7 @@ class WebSocket(AsyncJsonWebsocketConsumer):
 					'type': 'message', # This references the event listener function
 					'username': self.scope['username'],
 					'message': content['message'],
+					'time': int(round(time.time() * 1000)),
 				}
 			)
 
@@ -48,6 +51,7 @@ class WebSocket(AsyncJsonWebsocketConsumer):
 			'type': 'message',
 			'message': event['message'],
 			'username': event['username'],
+			'time': event['time'],
 		})
 
 	async def disconnect(self, close_code):

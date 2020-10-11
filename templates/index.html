@@ -77,17 +77,17 @@
 		}
 
 		// Adds the message to the user
-		const addMessage = (username, message) => {
+		const addMessage = (username, message, latency) => {
 			let msg = document.createElement('div');
 			msg.classList.add('msg');
 
 			if (username === USERNAME) {
 				// If the message was sent from the current user
 
-				msg.innerHTML = `${sanitize(message)} &lt; <span style="color: #${username};">${username}</span>`;
+				msg.innerHTML = `${sanitize(message)} &lt; <span style="color: #${username};" title="${latency} ms">${username}</span>`;
 				msg.style.textAlign = 'right';
 			} else {
-				msg.innerHTML = `<span style="color: #${username};">${username}</span> &gt; ${sanitize(message)}`;
+				msg.innerHTML = `<span style="color: #${username};" title="${latency} ms">${username}</span> &gt; ${sanitize(message)}`;
 			}
 
 			// Scroll down if you are already at the bottom
@@ -119,7 +119,7 @@
 					break;
 				}
 				case 'message': {
-					addMessage(data.username, data.message);
+					addMessage(data.username, data.message, Date.now() - data.time);
 					break;
 				}
 				default: console.error(message); // Always have some fallback
