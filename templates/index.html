@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Lazy Chat</title>
+</head>
+<body>
+	<style type="text/css" media="screen">
+		#bar {
+			display: flex;
+			margin: 10px;
+			align-items: center;
+			font-size: 16px;
+		}
+		#status {
+			color: red;
+			margin-right: 10px;
+		}
+		#status[active] {
+			color: green;
+		}
+		input {
+			display: block;
+			flex-grow: 1;
+			outline: none;
+			border: none;
+			background: none;
+			color: white;
+			font-size: 16px;
+		}
+		input:hover {
+			background-color: #333;
+		}
+		.msg {
+			margin: 5px;
+			color: white;
+		}
+		body {
+			height: 100vh;
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			margin: 0;
+			background-color: #222;
+		}
+		#msg-box {
+			overflow: auto;
+			flex-grow: 1;
+		}
+	</style>
+	<div id="bar">
+		<div id="status">></div>
+		<input>
+	</div>
+	<div id="msg-box">
+	</div>
+	<script>
+		// Element selectors
+		let msgbox = document.querySelector('#msg-box');
+		let status = document.querySelector('#status');
+		let input = document.querySelector('input');
+
+		let USERNAME; // Stores the username
+
+		// Used to santize XSS potential text (lazy santizing)
+		const sanitize = input => {
+			let safe = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#39;'
+			}
+			for (let key in safe) {
+				input = input.replace(new RegExp(key, 'g'), safe[key]);
+			}
+			return input;
+		}
+
+		// Adds the message to the user
+		const addMessage = (username, message) => {
+			let msg = document.createElement('div');
+			msg.classList.add('msg');
+
+			if (username === USERNAME) {
+				// If the message was sent from the current user
+
+				msg.innerHTML = `${sanitize(message)} &lt; <span style="color: #${username};">${username}</span>`;
+				msg.style.textAlign = 'right';
+			} else {
+				msg.innerHTML = `<span style="color: #${username};">${username}</span> &gt; ${sanitize(message)}`;
+			}
+
+			// Scroll down if you are already at the bottom
+			let bottom = Math.ceil(msgbox.offsetHeight + msgbox.scrollTop) >= msgbox.scrollHeight;
+			msgbox.appendChild(msg);
+			if (bottom) msgbox.scrollTop = msgbox.scrollHeight;
+		}
+
+		// Fetches the websocket url from the current url
+		const wsurl = () => {
+			let l = window.location;
+			return `${l.protocol.replace('http', 'ws')}//${l.host}${l.pathname}`
+		}
+
+		// Opens a new connection
+		let socket = new WebSocket(wsurl());
+
+		// Event listener for messages
+		socket.onmessage = message => {
+			let data = JSON.parse(message.data); // Data must be parsed into a JavaScript Object
+
+			// Check for the type
+			switch(data.type) {
+				case 'username': {
+					// This will only happen upon first connection
+					USERNAME = data.username;
+					status.setAttribute('active', '');
+					input.focus();					
+					break;
+				}
+				case 'message': {
+					addMessage(data.username, data.message);
+					break;
+				}
+				default: console.error(message); // Always have some fallback
+			}
+		}
+
+		// Event listener when the socket is closed
+		socket.onclose = () => {
+			status.removeAttribute('active');
+			alert('Connection Lost! Click Ok to reload the page.');
+			window.location.reload();
+		}
+
+		// Event listener for input
+		input.onkeypress = e => {
+
+			// Trigger on enter
+			if (e.key === 'Enter') {
+
+				// Data sent through the socket must be encoded as JSON
+				socket.send(JSON.stringify({
+					type: 'message',
+					message: input.value
+				}));
+
+				// Reset input value
+				input.value = '';
+			}
+		}
+	</script>
+</body>
+</html>
